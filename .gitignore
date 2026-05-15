@@ -1,0 +1,22 @@
+zig-out/
+.zig-cache/
+zig-pkg/
+
+# Shell configs (WSL artifacts)
+.bash_profile
+.bashrc
+.profile
+.zprofile
+.zshrc
+.gitconfig
+.ripgreprc
+
+# IDE
+.idea
+
+# Misc
+.mcp.json
+.gitmodules
+
+# Claude Code
+.claude/
