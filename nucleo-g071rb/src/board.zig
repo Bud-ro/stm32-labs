@@ -5,7 +5,8 @@
 /// the STM32G071 SVD file.
 ///
 /// Board features:
-///   - STM32G071RB: Cortex-M0+, 128KB flash, 36KB RAM, HSI16 @ 16MHz
+///   - STM32G071RB: Cortex-M0+, 128KB flash, 36KB RAM
+///   - SYSCLK selectable per lab (HSI16 reset default, or PLL → 32 MHz)
 ///   - User LED (LD4) on PA5
 ///   - USART2 on PA2/PA3 (AF1) routed to ST-Link Virtual COM Port
 ///   - ST-Link V2-1 onboard debug probe (SWD + VCP over USB)
@@ -21,6 +22,7 @@
 ///   board.Hardware.serial.puts("hello\r\n");
 ///
 pub const Hardware = @import("hardware.zig").Hardware;
+pub const clock = @import("clock.zig");
 pub const gpio = @import("gpio.zig");
 pub const uart = @import("uart.zig");
 pub const startup = @import("startup.zig");
