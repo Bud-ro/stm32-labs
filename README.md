@@ -8,6 +8,25 @@ to show that there is a significantly simpler way to do embedded development.
 All labs work on Zig 0.16.0, and can be flashed using Zig build system commands
 that orchestrate OpenOCD. You can also debug, albeit the experience is somewhat bad.
 
+## Why
+
+Well I have been working on an [embedded framework](https://github.com/Bud-ro/zig-pub-sub) that includes a fairly decent scheduler,
+pub sub, hardware abstraction, etc. so I decided for fun that I'd try to see how it fares
+at contrived tasks that I didn't come up with myself. Along with that I also want to see
+how it fares against a HAL specifically designed by the STM developers themselves on:
+- Code Size
+- RAM usage
+- Lines of code
+- Readability
+
+This comparison is only possible for me or others in the class to make, as I won't be publishing
+solutions (both for academic integrity, but mainly because the assignments requiring typing
+my name into the source code and other weird things). However even with that being said, hopefully
+the solutions presented here can stand on their own. The initial blinky + serial UART
+lab hits a code size of 1028. Not great, there's certainly improvements to be made if you
+stripped out my scheduler, but once that one-time cost is accounted for the scaling of
+it should hopefully beat out other solutions on code size or even maintainability.
+
 ## Prerequisites
 
 - [Zig](https://ziglang.org/download/) >= 0.16.0
