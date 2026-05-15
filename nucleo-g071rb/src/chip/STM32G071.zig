@@ -52,19 +52,13 @@ pub const interrupts: []const Interrupt = &.{
     .{ .name = "UCPD1_UCPD2", .index = 8, .description = "UCPD global interrupt" },
     .{ .name = "DMA_Channel1", .index = 9, .description = "DMA channel 1 interrupt" },
     .{ .name = "DMA_Channel2_3", .index = 10, .description = "DMA channel 2 & 3 interrupts" },
-    .{ .name = "DMA_Channel4_5_6_7", .index = 11, .description = 
-    \\DMA channel 4, 5, 6 & 7 and
-    \\        DMAMUX
-    },
+    .{ .name = "DMA_Channel4_5_6_7", .index = 11, .description = "DMA channel 4, 5, 6 & 7 and DMAMUX" },
     .{ .name = "ADC_COMP", .index = 12, .description = "ADC and COMP interrupts" },
     .{ .name = "TIM1_BRK_UP_TRG_COMP", .index = 13, .description = "TIM1 break, update, trigger" },
     .{ .name = "TIM1_CC", .index = 14, .description = "TIM1 Capture Compare interrupt" },
     .{ .name = "TIM2", .index = 15, .description = "TIM2 global interrupt" },
     .{ .name = "TIM3", .index = 16, .description = "TIM3 global interrupt" },
-    .{ .name = "TIM6_DAC_LPTIM1", .index = 17, .description = 
-    \\TIM6 + LPTIM1 and DAC global
-    \\        interrupt
-    },
+    .{ .name = "TIM6_DAC_LPTIM1", .index = 17, .description = "TIM6 + LPTIM1 and DAC global interrupt" },
     .{ .name = "TIM7_LPTIM2", .index = 18, .description = "TIM7 + LPTIM2 global interrupt" },
     .{ .name = "TIM14", .index = 19, .description = "TIM14 global interrupt" },
     .{ .name = "TIM15", .index = 20, .description = "Timer 15 global interrupt" },
@@ -81,6 +75,21 @@ pub const interrupts: []const Interrupt = &.{
     .{ .name = "RNG", .index = 31, .description = "RNG global interrupts" },
 };
 
+pub fn irqIndex(comptime name: [:0]const u8) comptime_int {
+    for (interrupts) |entry| {
+        if (entry.name.len != name.len) continue;
+        var match = true;
+        for (entry.name, name) |a, b| {
+            if (a != b) {
+                match = false;
+                break;
+            }
+        }
+        if (match) return entry.index;
+    }
+    @compileError("unknown interrupt: " ++ name);
+}
+
 const std = @import("std");
 pub const cc: std.builtin.CallingConvention = .{ .arm_aapcs = .{} };
 pub const Handler = *const fn () callconv(cc) void;
@@ -90,7 +99,6 @@ fn defaultHandler() callconv(cc) void {
 }
 
 pub const VectorTable = extern struct {
-
     initial_stack_pointer: *const anyopaque,
     Reset: Handler,
     NMI: Handler = unhandled,
@@ -247,6 +255,8 @@ pub const peripherals = struct {
     pub const CRC: *volatile types.peripherals.CRC = @ptrFromInt(0x40023000);
     /// Random number generator
     pub const RNG: *volatile types.peripherals.RNG = @ptrFromInt(0x40025000);
+    /// Nested Vectored Interrupt Controller (ARM core peripheral)
+    pub const NVIC: *volatile types.peripherals.NVIC = @ptrFromInt(0xE000E100);
     /// SysTick Timer (ARM core peripheral)
     pub const SysTick: *volatile types.peripherals.SysTick = @ptrFromInt(0xE000E010);
     /// General-purpose I/Os

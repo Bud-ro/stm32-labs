@@ -27,6 +27,7 @@ pub const TIM15 = @import("peripherals/TIM15.zig").TIM15;
 pub const TIM16 = @import("peripherals/TIM16.zig").TIM16;
 pub const TIM2 = @import("peripherals/TIM2.zig").TIM2;
 pub const TIM6 = @import("peripherals/TIM6.zig").TIM6;
+pub const NVIC = @import("peripherals/NVIC.zig").NVIC;
 pub const SysTick = @import("peripherals/SysTick.zig").SysTick;
 pub const UCPD1 = @import("peripherals/UCPD1.zig").UCPD1;
 pub const USART1 = @import("peripherals/USART1.zig").USART1;

@@ -1,5 +1,6 @@
 const app = @import("root");
 const chip = @import("chip/STM32G071.zig");
+const hardware = @import("hardware.zig");
 
 export fn __atomic_load_4(src: *const u32, _: i32) u32 {
     return @as(*const volatile u32, @ptrCast(src)).*;
@@ -46,4 +47,5 @@ pub export const vector_table: chip.VectorTable linksection(".isr_vector") = .{
     .initial_stack_pointer = @ptrCast(&_estack),
     .Reset = @ptrCast(&_start),
     .SysTick = &sysTickHandler,
+    .USART2 = &hardware.usart2RxHandler,
 };

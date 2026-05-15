@@ -1,11 +1,10 @@
 .{
-    .name = .stm32_zig_labs,
+    .name = .lab_04,
     .version = "0.0.0",
-    .fingerprint = 0xd14e468b971d033c,
+    .fingerprint = 0x629ba43c92de5a48,
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
-        .@"lab-03" = .{ .path = "lab-03" },
-        .@"lab-04" = .{ .path = "lab-04" },
+        .@"nucleo-g071rb" = .{ .path = "../nucleo-g071rb" },
         .zig_pub_sub = .{
             .url = "git+https://github.com/Bud-ro/zig-pub-sub#9f1cd8406c6bea613fc632b80b73b8ff153ce766",
             .hash = "zig_pub_sub-0.0.0-OLnGOubdDABQhk-ZKdm4ScHLXA6YJ_L4G1pHU4rVAN4U",
@@ -14,5 +13,6 @@
     .paths = .{
         "build.zig",
         "build.zig.zon",
+        "src",
     },
 }
