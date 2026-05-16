@@ -8,12 +8,17 @@ pub fn build(b: *std.Build) void {
     const bsp_dep = b.dependency("nucleo-g071rb", .{
         .optimize = optimize,
     });
+    const common_dep = b.dependency("common", .{
+        .target = target,
+        .optimize = optimize,
+    });
     const erd_core_dep = b.dependency("zig_pub_sub", .{}).builder.dependency("erd_core", .{
         .target = target,
         .optimize = optimize,
     });
 
     const board_mod = bsp_dep.module("board");
+    const common_mod = common_dep.module("common");
     const erd_core_mod = erd_core_dep.module("erd_core");
 
     const app_mod = b.createModule(.{
@@ -22,6 +27,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     app_mod.addImport("board", board_mod);
+    app_mod.addImport("common", common_mod);
     app_mod.addImport("erd_core", erd_core_mod);
 
     const exe = b.addExecutable(.{

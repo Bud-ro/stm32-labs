@@ -4,7 +4,7 @@ const gpio = @import("gpio.zig");
 const uart = @import("uart.zig");
 const i2c = @import("i2c.zig");
 const startup = @import("startup.zig");
-const RingBuffer = @import("ring_buffer.zig").RingBuffer;
+const RingBuffer = @import("common").RingBuffer;
 
 const usart2 = chip.peripherals.USART2;
 const i2c1 = chip.peripherals.I2C1;
@@ -50,7 +50,7 @@ pub const Hardware = struct {
     /// Configure I2C1 on PB8/PB9 in master mode. Caller picks the bus
     /// speed via `config.mode` and supplies the I2C kernel clock (the
     /// default RCC reset selects PCLK, which matches HCLK on this BSP).
-    pub fn enableI2c1(_: Hardware, comptime config: i2c.Config) void {
+    pub fn enableI2c1(comptime config: i2c.Config) void {
         chip.peripherals.RCC.IOPENR.modify(.{ .IOPBEN = 1 });
         chip.peripherals.RCC.APBENR1.modify(.{ .I2C1EN = 1 });
         i2c1_scl.configure(.{ .mode = .alternate, .af = 6, .output_type = .open_drain, .pull = .up });
@@ -58,7 +58,7 @@ pub const Hardware = struct {
         i2c1_bus.init(config);
     }
 
-    pub fn runUarts(_: Hardware) bool {
+    pub fn runUarts() bool {
         var had_work = serial.drainTx();
         if (rx_ring.pop()) |byte| {
             if (uart_rx_callback) |cb| cb(byte);
@@ -67,7 +67,10 @@ pub const Hardware = struct {
         return had_work or serial.txPending();
     }
 
-    pub fn init(_: Hardware, config: Config) void {
+    /// Common hardware init. Sets up clocks, blinky LED (must be blinked from the app),
+    /// and the USB UART. For more specific components look at the other functions
+    /// in this namespace.
+    pub fn init(config: Config) void {
         config.clock.apply();
 
         chip.peripherals.RCC.IOPENR.modify(.{ .IOPAEN = 1 });

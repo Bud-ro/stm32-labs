@@ -1,5 +1,5 @@
 const chip = @import("chip/STM32G071.zig");
-const RingBuffer = @import("ring_buffer.zig").RingBuffer;
+const RingBuffer = @import("common").RingBuffer;
 
 pub const Usart = struct {
     periph: *volatile chip.types.peripherals.USART1,

@@ -35,6 +35,7 @@ pub const RingBuffer = struct {
         compilerFence();
         if (self.head == self.tail) return null;
         const byte = self.buf[self.tail];
+        compilerFence();
         self.tail = if (self.tail + 1 >= self.buf.len) 0 else self.tail + 1;
         return byte;
     }

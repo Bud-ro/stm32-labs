@@ -1,9 +1,11 @@
 const board = @import("board");
+const common = @import("common");
+const class_board = @import("class_board");
 const erd_core = @import("erd_core");
 const timer = erd_core.timer;
-const CommandBuffer = @import("ring_buffer.zig").CommandBuffer;
+const CommandBuffer = common.CommandBuffer;
+const Tmp102 = class_board.Tmp102;
 const parser = @import("parser.zig");
-const tmp102 = @import("tmp102.zig");
 
 const serial = board.Hardware.serial;
 
@@ -16,22 +18,18 @@ const SAMPLE_PERIOD_MS: u32 = 1000;
 var cmd_storage: [CMD_BUF_SIZE]u8 = .{0} ** CMD_BUF_SIZE;
 
 pub const Application = struct {
+    timer_module: *timer.TimerModule,
+    sensor: Tmp102,
     blink_timer: timer.Timer = .{},
     sample_timer: timer.Timer = .{},
     conversion_timer: timer.Timer = .{},
     cmd: CommandBuffer = .{ .buf = &cmd_storage },
-    timer_module: *timer.TimerModule = undefined,
 
-    pub fn init(self: *Application, timer_module: *timer.TimerModule) void {
-        self.timer_module = timer_module;
-        timer_module.startPeriodic(&self.blink_timer, 1000, null, &onBlinkTimer);
-
-        serial.puts("Lab 06: TMP102 over I2C1\r\n");
-        if (tmp102.initialize())
-            serial.puts("TMP102 initialized (one-shot mode)\r\n")
-        else |_|
-            serial.puts("TMP102 init FAILED - check wiring\r\n");
-        serial.puts("Commands: START, STOP\r\n> ");
+    /// Start the LED blink heartbeat. Banner print and TMP102 init are
+    /// done in main() before this is called — Application here just
+    /// wires the periodic timer the super-loop will service.
+    pub fn start(self: *Application) void {
+        self.timer_module.startPeriodic(&self.blink_timer, 1000, null, &onBlinkTimer);
     }
 
     pub fn processChar(self: *Application, c: u8) void {
@@ -103,15 +101,16 @@ pub const Application = struct {
     }
 
     fn triggerOneShot(self: *Application) void {
-        tmp102.triggerOneShot() catch {
+        self.sensor.triggerOneShot() catch {
             serial.puts("TMP102 trigger failed\r\n");
             return;
         };
         self.timer_module.startOneShot(&self.conversion_timer, ONE_SHOT_MS, self, &onConversionDone);
     }
 
-    fn onConversionDone(_: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {
-        const raw = tmp102.readTemperatureRaw() catch {
+    fn onConversionDone(ctx: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {
+        const self: *Application = @ptrCast(@alignCast(ctx));
+        const raw = self.sensor.readTemperatureRaw() catch {
             serial.puts("TMP102 read failed\r\n");
             return;
         };
@@ -151,7 +150,7 @@ fn printUint(n: u16) void {
         serial.putc('0');
         return;
     }
-    var digits: [5]u8 = undefined;
+    var digits: [3]u8 = undefined;
     var v = n;
     var i: usize = 0;
     while (v > 0) : (i += 1) {

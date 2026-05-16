@@ -1,23 +1,18 @@
-/// Lab 06: I2C1 + TMP102 temperature sensor
-///
-/// Builds on Lab 04 (UART command parser, ring buffer) and Lab 05
-/// (32 MHz PLL system clock). The application configures I2C1 on
-/// PB8/PB9 (Arduino D15/D14) and reads a TMP102 sensor sitting on a
-/// shield board. `START` over UART begins 1 Hz one-shot reads; `STOP`
-/// halts them. Conversions are triggered by writing OS=1 to the
-/// TMP102 config register; a 30 ms one-shot software timer schedules
-/// the readback so the super-loop stays responsive in between.
 const board = @import("board");
+const class_board = @import("class_board");
 const Application = @import("application").Application;
 const erd_core = @import("erd_core");
 
+// Force the startup module to be analyzed so its exported symbols (_start,
+// vector_table, __atomic_load_4) end up in the final binary.
 comptime {
     _ = board.startup;
 }
 
+const SYSCLK = board.clock.Config.pll_32mhz;
+
 var timer_module: erd_core.timer.TimerModule = .{};
-var hardware: board.Hardware = .{};
-var application: Application = .{};
+var application: Application = undefined;
 
 fn sysTickTick() void {
     timer_module.incrementCurrentTime(1);
@@ -28,19 +23,30 @@ fn onUartRx(c: u8) void {
 }
 
 pub fn main() noreturn {
-    hardware.init(.{
+    board.Hardware.init(.{
         .systick_tick = &sysTickTick,
         .uart_rx = &onUartRx,
-        .clock = .pll_32mhz,
+        .clock = SYSCLK,
     });
-    hardware.enableI2c1(.{
-        .kernel_clock_hz = board.clock.Config.pll_32mhz.hclkHz(),
+    board.Hardware.enableI2c1(.{
+        .kernel_clock_hz = SYSCLK.hclkHz(),
         .mode = .standard_100k,
     });
-    application.init(&timer_module);
+
+    const serial = board.Hardware.serial;
+    serial.puts("Lab 06: TMP102 over I2C1\r\n");
+    const sensor = class_board.Tmp102.init(board.Hardware.i2c1_bus) catch blk: {
+        serial.puts("TMP102 init FAILED - check wiring\r\n");
+        break :blk class_board.Tmp102{ .bus = board.Hardware.i2c1_bus };
+    };
+    serial.puts("Commands: START, STOP\r\n> ");
+
+    application = .{ .timer_module = &timer_module, .sensor = sensor };
+    application.start();
+
     while (true) {
         var had_work = false;
-        if (hardware.runUarts()) had_work = true;
+        if (board.Hardware.runUarts()) had_work = true;
         if (timer_module.run()) had_work = true;
         if (!had_work) asm volatile ("wfi");
     }

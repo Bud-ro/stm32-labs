@@ -1,7 +1,8 @@
 const board = @import("board");
+const common = @import("common");
 const erd_core = @import("erd_core");
 const timer = erd_core.timer;
-const CommandBuffer = @import("ring_buffer.zig").CommandBuffer;
+const CommandBuffer = common.CommandBuffer;
 const parser = @import("parser.zig");
 
 const serial = board.Hardware.serial;

@@ -1,15 +1,14 @@
 .{
-    .name = .nucleo_g071rb,
+    .name = .class_board,
     .version = "0.0.0",
-    .fingerprint = 0xcdf74e36064fd48b,
+    .fingerprint = 0xbe810a71ae5a6e21,
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
-        .common = .{ .path = "../common" },
+        .@"nucleo-g071rb" = .{ .path = "../nucleo-g071rb" },
     },
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        "stm32g071rb.ld",
     },
 }

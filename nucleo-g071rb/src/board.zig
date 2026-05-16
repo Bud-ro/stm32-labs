@@ -15,9 +15,7 @@
 ///
 ///   const board = @import("board");
 ///
-///   var hardware: board.Hardware = .{};
-///   hardware.init(&myTickFn);
-///
+///   board.Hardware.init(.{ .systick_tick = &myTickFn });
 ///   board.Hardware.led.toggle();
 ///   board.Hardware.serial.puts("hello\r\n");
 ///

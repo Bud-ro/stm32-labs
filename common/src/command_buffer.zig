@@ -39,11 +39,4 @@ pub const CommandBuffer = struct {
         self.input_len = 0;
         self.overflowed = false;
     }
-
-    pub fn clear(self: *CommandBuffer) void {
-        @memset(self.buf, 0);
-        self.head = 0;
-        self.input_len = 0;
-        self.overflowed = false;
-    }
 };

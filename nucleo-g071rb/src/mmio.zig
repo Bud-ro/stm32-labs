@@ -34,14 +34,5 @@ pub fn Mmio(comptime PackedT: type) type {
             }
             addr.write(val);
         }
-
-        pub fn toggle(addr: *volatile @This(), fields: anytype) void {
-            var val = addr.read();
-            inline for (@typeInfo(@TypeOf(fields)).@"struct".fields) |field| {
-                const FieldType = @TypeOf(@field(val, field.name));
-                @field(val, field.name) = @field(val, field.name) ^ @as(FieldType, @field(fields, field.name));
-            }
-            addr.write(val);
-        }
     };
 }
