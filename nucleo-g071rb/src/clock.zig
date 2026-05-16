@@ -8,7 +8,7 @@
 const chip = @import("chip/STM32G071.zig");
 
 pub const Config = enum {
-    /// HSI16 direct, SYSCLK = 16 MHz. Chip reset state — no RCC writes
+    /// HSI16 direct, SYSCLK = 16 MHz. Chip reset state - no RCC writes
     /// required.
     hsi16,
     /// HSI16 fed through the PLL, SYSCLK = HCLK = PCLK = 32 MHz.

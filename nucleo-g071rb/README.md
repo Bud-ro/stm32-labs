@@ -1,4 +1,4 @@
-# nucleo-g071rb — Board Support Package
+# nucleo-g071rb - Board Support Package
 
 Board support package for the ST NUCLEO-G071RB, providing register definitions, GPIO/UART drivers, startup code, and a linker script for bare-metal Zig on the STM32G071RB (Cortex-M0+).
 
@@ -21,7 +21,7 @@ regz STM32G071.svd --output src/chip/
 The SVD only covers chip-specific peripherals. The following ARM core peripherals are not
 present in the SVD and were added manually, following the same `mmio.Mmio` pattern used by the generated code:
 
-- **SysTick** (`src/chip/types/peripherals/SysTick.zig`) — The ARM Cortex-M System Timer is defined at a 
+- **SysTick** (`src/chip/types/peripherals/SysTick.zig`) - The ARM Cortex-M System Timer is defined at a 
 fixed address (`0xE000E010`) across all Cortex-M0+ cores. Its register layout (CSR, RVR, CVR, CALIB) comes
 from the [ARM Cortex-M0+ Technical Reference Manual](https://developer.arm.com/documentation/dui0662/b/Cortex-M0--Peripherals/System-timer--SysTick).
 
@@ -35,7 +35,7 @@ build.zig.zon          Package metadata
 STM32G071.svd          Source SVD (from ST)
 stm32g071rb.ld         Linker script (128K flash, 36K RAM)
 src/
-  board.zig            Public API — re-exports Hardware, gpio, uart, startup, chip
+  board.zig            Public API - re-exports Hardware, gpio, uart, startup, chip
   hardware.zig         Board-level init: clocks, GPIO mux, UART, SysTick
   [...]                Various drivers, and helpers that use definitions from chip/types
   startup.zig          _start (reset handler), vector table, .data/.bss init

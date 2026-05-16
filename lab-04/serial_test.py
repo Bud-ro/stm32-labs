@@ -9,7 +9,7 @@ Usage:
 Default port: /dev/ttyACM0
 Baud rate:    115200
 
-All sends are burst — the MCU's interrupt-driven RX buffers every byte
+All sends are burst - the MCU's interrupt-driven RX buffers every byte
 at wire speed. Reads wait for the "> " prompt, no fixed delays.
 """
 
@@ -71,7 +71,7 @@ def check(label, response, expect_substr=None, expect_not=None):
         failed += 1
         icon = "FAIL"
 
-    detail = " — " + "; ".join(reasons) if reasons else ""
+    detail = " - " + "; ".join(reasons) if reasons else ""
     print(f"  [{icon}] {label}{detail}")
 
 
@@ -179,7 +179,7 @@ def main():
     if failed:
         print(f" ({failed} FAILED)")
     else:
-        print(" — all good")
+        print(" - all good")
     sys.exit(1 if failed else 0)
 
 

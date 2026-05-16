@@ -7,13 +7,13 @@
 ///  - Head is only written by the producer, tail only by the consumer
 ///  - pop() contains compiler fences (zero-cost memory clobber) to
 ///    force reload of head and to order the buf read before the tail
-///    write — no reliance on external barriers
+///    write - no reliance on external barriers
 ///  - push() needs no fences: the ISR runs to completion on M0+, so
 ///    all stores are committed before the main loop resumes
 ///
 /// Assumes the consumer services the buffer fast enough that it never
 /// fills. push() returns false on overflow but does not signal the
-/// condition — bytes are silently lost.
+/// condition - bytes are silently lost.
 pub const RingBuffer = struct {
     buf: []u8,
     head: usize = 0,

@@ -25,6 +25,7 @@ pub const Hardware = @import("hardware.zig").Hardware;
 pub const clock = @import("clock.zig");
 pub const gpio = @import("gpio.zig");
 pub const uart = @import("uart.zig");
+pub const i2c = @import("i2c.zig");
 pub const startup = @import("startup.zig");
 pub const chip = @import("chip/STM32G071.zig");
 pub const mmio = @import("mmio.zig");

@@ -2,7 +2,7 @@
 ///
 /// Prints a message via USART2 (ST-Link VCP) every 1 second and toggles the
 /// onboard LED (PA5) with each print. Uses erd_core's TimerModule for scheduling
-/// instead of HAL_Delay — the super-loop sleeps via WFI between timer expirations.
+/// instead of HAL_Delay - the super-loop sleeps via WFI between timer expirations.
 const board = @import("board");
 const Application = @import("application").Application;
 const erd_core = @import("erd_core");

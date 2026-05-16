@@ -1,6 +1,6 @@
 ## Assignment
 
-This lab is essentially identical to [lab-03](../lab-03/ASSIGNMENT.md) — print a
+This lab is essentially identical to [lab-03](../lab-03/ASSIGNMENT.md) - print a
 string on Tera Term once per second and blink the on-board LED. The Zig BSP
 already drove the UART and LED through direct register manipulation (no STM32
 HAL), so the only material difference in lab-05 is that the lab now configures

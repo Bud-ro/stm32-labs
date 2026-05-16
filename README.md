@@ -65,12 +65,12 @@ Flashes via ST-Link using OpenOCD.
 
 ## Debugging
 
-Open the project in VS Code with the Cortex-Debug extension. The `.vscode/launch.json` is pre-configured — select the lab from the picker and press F5.
+Open the project in VS Code with the Cortex-Debug extension. The `.vscode/launch.json` is pre-configured - select the lab from the picker and press F5.
 
 ## Project Structure
 
 ```
-build.zig              Top-level build — dispatches to the selected lab
+build.zig              Top-level build - dispatches to the selected lab
 nucleo-g071rb/         Board support package (BSP)
 lab-xx/                Folder containing standalone package for a certain lab.
 ```

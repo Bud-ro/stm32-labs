@@ -2,6 +2,7 @@ const app = @import("root");
 const chip = @import("chip/STM32G071.zig");
 const hardware = @import("hardware.zig");
 
+// TODO: volatile isn't the correct way to handle this
 export fn __atomic_load_4(src: *const u32, _: i32) u32 {
     return @as(*const volatile u32, @ptrCast(src)).*;
 }
