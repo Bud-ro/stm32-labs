@@ -1,0 +1,15 @@
+
+FLASH:
+  .isr_vector              192 bytes
+  .text                   2000 bytes
+  .rodata                  204 bytes
+  .ARM.exidx               168 bytes
+      2564 bytes used  (1.95%)
+    128508 bytes free  (98.04%)
+
+RAM:
+  .data                     80 bytes
+  .bss                     292 bytes
+       372 bytes used  (1.00%)
+     36492 bytes free  (98.99%)
+

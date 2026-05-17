@@ -38,11 +38,13 @@ const gpio = @import("gpio.zig");
 const uart = @import("uart.zig");
 const i2c = @import("i2c.zig");
 const spi = @import("spi.zig");
+const pwm = @import("pwm.zig");
 const RingBuffer = @import("common").RingBuffer;
 
 const usart2 = chip.peripherals.USART2;
 const i2c1 = chip.peripherals.I2C1;
 const spi1 = chip.peripherals.SPI1;
+const tim14 = chip.peripherals.TIM14;
 
 var tx_storage: [256]u8 = undefined;
 var tx_ring: RingBuffer = .{ .buf = &tx_storage };
@@ -72,6 +74,10 @@ pub const Hardware = struct {
     /// before use.
     pub const spi1_bus: spi.Spi = .{ .periph = spi1 };
 
+    /// TIM14_CH1 PWM on PA4 (the shield's MOTOR_PWM net). Call
+    /// `enableMotorPwm` before use.
+    pub const motor_pwm: pwm.Tim14Pwm = .{ .periph = tim14 };
+
     const usart2_tx = gpio.Pin(.A, 2);
     const usart2_rx = gpio.Pin(.A, 3);
     const i2c1_scl = gpio.Pin(.B, 8);
@@ -79,6 +85,7 @@ pub const Hardware = struct {
     const spi1_sck = gpio.Pin(.B, 3);
     const spi1_miso = gpio.Pin(.A, 6);
     const spi1_mosi = gpio.Pin(.A, 7);
+    const motor_pwm_pin = gpio.Pin(.A, 4);
 
     /// Lab-facing I2C1 settings. Kernel clock is derived from the
     /// `clock` passed to `enableI2c1`; callers only pick the bus mode.
@@ -91,6 +98,13 @@ pub const Hardware = struct {
     pub const Spi1Config = struct {
         bus_rate_hz: u32 = 4_000_000,
         mode: spi.Mode = .{},
+    };
+
+    /// Lab-facing motor-PWM settings. Kernel clock comes from the
+    /// `clock` passed to `enableMotorPwm`.
+    pub const MotorPwmConfig = struct {
+        pwm_freq_hz: u32 = 10_000,
+        resolution: u16 = 100,
     };
 
     /// Apply `clock`, configure the LED + USART2 (TX always, RX if the
@@ -149,6 +163,20 @@ pub const Hardware = struct {
             .kernel_clock_hz = board_clock.hclkHz(),
             .bus_rate_hz = cfg.bus_rate_hz,
             .mode = cfg.mode,
+        });
+    }
+
+    /// Configure TIM14_CH1 PWM on PA4 (AF4). Drives the L298N IN1 on
+    /// the class shield. The duty range is `0..resolution`.
+    /// `board_clock` must match the one passed to `init`.
+    pub fn enableMotorPwm(comptime board_clock: clock.Config, comptime cfg: MotorPwmConfig) void {
+        chip.peripherals.RCC.IOPENR.modify(.{ .IOPAEN = 1 });
+        chip.peripherals.RCC.APBENR2.modify(.{ .TIM14EN = 1 });
+        motor_pwm_pin.configure(.{ .mode = .alternate, .af = 4 });
+        motor_pwm.init(.{
+            .kernel_clock_hz = board_clock.hclkHz(),
+            .pwm_freq_hz = cfg.pwm_freq_hz,
+            .resolution = cfg.resolution,
         });
     }
 
