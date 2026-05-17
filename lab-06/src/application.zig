@@ -26,7 +26,7 @@ pub const Application = struct {
     cmd: CommandBuffer = .{ .buf = &cmd_storage },
 
     /// Start the LED blink heartbeat. Banner print and TMP102 init are
-    /// done in main() before this is called — Application here just
+    /// done in main() before this is called - Application here just
     /// wires the periodic timer the super-loop will service.
     pub fn start(self: *Application) void {
         self.timer_module.startPeriodic(&self.blink_timer, 1000, null, &onBlinkTimer);

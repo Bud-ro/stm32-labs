@@ -1,34 +1,66 @@
+//! NUCLEO-G071RB board hardware namespace.
+//!
+//! `Hardware.init(clock)` programs the RCC + USART2 + optional SysTick
+//! for the requested SYSCLK. Subsequent `enableX(clock, ...)` calls
+//! take the same `clock` so the BSP can derive peripheral kernel
+//! settings (I2C TIMINGR, etc.) at comptime.
+//!
+//! Clock-independent handles (`Hardware.led`, `Hardware.serial`,
+//! `Hardware.i2c1_bus`) are accessible directly without threading
+//! `clock`.
+//!
+//! Example:
+//!
+//!   const board = @import("board");
+//!   const SYSCLK: board.clock.Config = .pll_32mhz;
+//!
+//!   fn sysTick() callconv(.c) void { /* ... */ }
+//!
+//!   pub export const vector_table linksection(".isr_vector") =
+//!       board.startup.vectorTable(.{ .SysTick = &sysTick });
+//!
+//!   pub fn main() noreturn {
+//!       board.Hardware.init(SYSCLK);
+//!       board.Hardware.enableI2c1(SYSCLK, .{ .mode = .standard_100k });
+//!       board.Hardware.led.toggle();
+//!   }
+//!
+//! `init` reads the lab's `vector_table` at comptime and:
+//!   - programs SysTick (1 ms tick) if `.SysTick` is overridden
+//!   - unmasks USART2 RX (RXNEIE + NVIC) if `.USART2` is overridden
+//! Labs that want UART RX write a one-line USART2 handler that calls
+//! `Hardware.serial.serviceRx()`.
+
+const root = @import("root");
 const chip = @import("chip/STM32G071.zig");
 const clock = @import("clock.zig");
 const gpio = @import("gpio.zig");
 const uart = @import("uart.zig");
 const i2c = @import("i2c.zig");
-const startup = @import("startup.zig");
 const RingBuffer = @import("common").RingBuffer;
 
 const usart2 = chip.peripherals.USART2;
 const i2c1 = chip.peripherals.I2C1;
 
-var rx_storage: [64]u8 = undefined;
 var tx_storage: [256]u8 = undefined;
-var rx_ring: RingBuffer = .{ .buf = &rx_storage };
 var tx_ring: RingBuffer = .{ .buf = &tx_storage };
-var uart_rx_callback: ?*const fn (u8) void = null;
 
-pub fn usart2RxHandler() callconv(chip.cc) void {
-    const isr = usart2.ISR.read();
-    if (isr.ORE == 1 or isr.FE == 1 or isr.NF == 1)
-        usart2.ICR.write(.{ .ORECF = isr.ORE, .FECF = isr.FE, .NCF = isr.NF });
-    if (isr.RXNE == 1) {
-        const byte: u8 = @truncate(usart2.RDR.read().RDR);
-        _ = rx_ring.push(byte);
-    }
+/// True at comptime when the lab's `vector_table` overrides `field`
+/// with a non-default handler. Used by `init` to gate SysTick
+/// programming and USART2 RX unmasking.
+fn hasVectorOverride(comptime field: []const u8) bool {
+    if (!@hasDecl(root, "vector_table")) return false;
+    return @field(root.vector_table, field) != chip.unhandled;
 }
 
 pub const Hardware = struct {
+    /// Onboard user LED (LD4) on PA5. Configured as output by `init`.
     pub const led = gpio.Pin(.A, 5);
 
+    /// USART2 (ST-Link VCP) at 115_200-8N1, TX backed by a ring buffer
+    /// that the super-loop drains via `runUarts()`.
     pub const serial: uart.Usart = .{ .periph = usart2, .tx_ring = &tx_ring };
+
     /// I2C1 master on the Arduino-style header (PB8 = SCL/D15,
     /// PB9 = SDA/D14). Call `enableI2c1` before use.
     pub const i2c1_bus: i2c.I2c = .{ .periph = i2c1 };
@@ -38,40 +70,17 @@ pub const Hardware = struct {
     const i2c1_scl = gpio.Pin(.B, 8);
     const i2c1_sda = gpio.Pin(.B, 9);
 
-    pub const Config = struct {
-        systick_tick: *const fn () void,
-        uart_rx: ?*const fn (u8) void = null,
-        /// SYSCLK source. Defaults to `.hsi16` (16 MHz reset state); set
-        /// to a faster preset like `.pll_32mhz` when the application needs
-        /// it. See `clock.zig`.
-        clock: clock.Config = .hsi16,
+    /// Lab-facing I2C1 settings. Kernel clock is derived from the
+    /// `clock` passed to `enableI2c1`; callers only pick the bus mode.
+    pub const I2c1Config = struct {
+        mode: i2c.Mode = .standard_100k,
     };
 
-    /// Configure I2C1 on PB8/PB9 in master mode. Caller picks the bus
-    /// speed via `config.mode` and supplies the I2C kernel clock (the
-    /// default RCC reset selects PCLK, which matches HCLK on this BSP).
-    pub fn enableI2c1(comptime config: i2c.Config) void {
-        chip.peripherals.RCC.IOPENR.modify(.{ .IOPBEN = 1 });
-        chip.peripherals.RCC.APBENR1.modify(.{ .I2C1EN = 1 });
-        i2c1_scl.configure(.{ .mode = .alternate, .af = 6, .output_type = .open_drain, .pull = .up });
-        i2c1_sda.configure(.{ .mode = .alternate, .af = 6, .output_type = .open_drain, .pull = .up });
-        i2c1_bus.init(config);
-    }
-
-    pub fn runUarts() bool {
-        var had_work = serial.drainTx();
-        if (rx_ring.pop()) |byte| {
-            if (uart_rx_callback) |cb| cb(byte);
-            had_work = true;
-        }
-        return had_work or serial.txPending();
-    }
-
-    /// Common hardware init. Sets up clocks, blinky LED (must be blinked from the app),
-    /// and the USB UART. For more specific components look at the other functions
-    /// in this namespace.
-    pub fn init(config: Config) void {
-        config.clock.apply();
+    /// Apply `clock`, configure the LED + USART2 (TX always, RX if the
+    /// lab overrides `.USART2`), and program SysTick for a 1 ms tick
+    /// if the lab overrides `.SysTick`.
+    pub fn init(comptime board_clock: clock.Config) void {
+        board_clock.apply();
 
         chip.peripherals.RCC.IOPENR.modify(.{ .IOPAEN = 1 });
         chip.peripherals.RCC.APBENR1.modify(.{ .USART2EN = 1 });
@@ -80,19 +89,39 @@ pub const Hardware = struct {
         usart2_tx.configure(.{ .mode = .alternate, .af = 1 });
         usart2_rx.configure(.{ .mode = .alternate, .af = 1 });
 
-        serial.init(.{ .baud_divider = config.clock.baudDivider(115_200) });
+        serial.init(.{ .baud_divider = board_clock.baudDivider(115_200) });
 
-        uart_rx_callback = config.uart_rx;
-        if (config.uart_rx != null) {
+        if (comptime hasVectorOverride("USART2")) {
             usart2.CR1.modify(.{ .RXNEIE = 1 });
             chip.peripherals.NVIC.ISER.write_raw(1 << chip.irqIndex("USART2"));
         }
 
-        startup.setSysTickCallback(config.systick_tick);
+        if (comptime hasVectorOverride("SysTick")) {
+            const systick = chip.peripherals.SysTick;
+            systick.RVR.write_raw(board_clock.systickReload1ms());
+            systick.CVR.write_raw(0);
+            systick.CSR.write(.{ .CLKSOURCE = 1, .TICKINT = 1, .ENABLE = 1 });
+        }
+    }
 
-        const systick = chip.peripherals.SysTick;
-        systick.RVR.write_raw(config.clock.systickReload1ms());
-        systick.CVR.write_raw(0);
-        systick.CSR.write(.{ .CLKSOURCE = 1, .TICKINT = 1, .ENABLE = 1 });
+    /// Configure I2C1 on PB8/PB9 in master mode. `board_clock` must
+    /// match the one passed to `init`; it drives the TIMINGR solver.
+    pub fn enableI2c1(comptime board_clock: clock.Config, comptime cfg: I2c1Config) void {
+        chip.peripherals.RCC.IOPENR.modify(.{ .IOPBEN = 1 });
+        chip.peripherals.RCC.APBENR1.modify(.{ .I2C1EN = 1 });
+        i2c1_scl.configure(.{ .mode = .alternate, .af = 6, .output_type = .open_drain, .pull = .up });
+        i2c1_sda.configure(.{ .mode = .alternate, .af = 6, .output_type = .open_drain, .pull = .up });
+        i2c1_bus.init(.{
+            .kernel_clock_hz = board_clock.hclkHz(),
+            .mode = cfg.mode,
+        });
+    }
+
+    /// Drain pending TX bytes from `serial`'s ring buffer. Returns
+    /// true if anything got sent or anything still pending. Call from
+    /// the super-loop; the WFI gate reads it.
+    pub fn runUarts() bool {
+        const sent = serial.drainTx();
+        return sent or serial.txPending();
     }
 };

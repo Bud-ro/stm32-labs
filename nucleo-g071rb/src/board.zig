@@ -14,10 +14,18 @@
 /// Usage from a lab application:
 ///
 ///   const board = @import("board");
+///   const SYSCLK: board.clock.Config = .pll_32mhz;
 ///
-///   board.Hardware.init(.{ .systick_tick = &myTickFn });
-///   board.Hardware.led.toggle();
-///   board.Hardware.serial.puts("hello\r\n");
+///   fn sysTick() callconv(.c) void { /* ... */ }
+///
+///   pub export const vector_table linksection(".isr_vector") =
+///       board.startup.vectorTable(.{ .SysTick = &sysTick });
+///
+///   pub fn main() noreturn {
+///       board.Hardware.init(SYSCLK);
+///       board.Hardware.led.toggle();
+///       board.Hardware.serial.puts("hello\r\n");
+///   }
 ///
 pub const Hardware = @import("hardware.zig").Hardware;
 pub const clock = @import("clock.zig");

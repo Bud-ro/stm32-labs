@@ -90,17 +90,15 @@ pub fn irqIndex(comptime name: [:0]const u8) comptime_int {
     @compileError("unknown interrupt: " ++ name);
 }
 
-const std = @import("std");
-pub const cc: std.builtin.CallingConvention = .{ .arm_aapcs = .{} };
-pub const Handler = *const fn () callconv(cc) void;
+pub const Handler = *const fn () callconv(.c) void;
 pub const unhandled: Handler = &defaultHandler;
-fn defaultHandler() callconv(cc) void {
+fn defaultHandler() callconv(.c) void {
     while (true) {}
 }
 
 pub const VectorTable = extern struct {
-    initial_stack_pointer: *const anyopaque,
-    Reset: Handler,
+    initial_stack_pointer: *const anyopaque = undefined,
+    Reset: Handler = unhandled,
     NMI: Handler = unhandled,
     HardFault: Handler = unhandled,
     reserved2: [7]u32 = undefined,

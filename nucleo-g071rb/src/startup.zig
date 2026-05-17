@@ -1,6 +1,22 @@
+//! Reset handler + vector-table helper for the STM32G071RB.
+//!
+//! The BSP doesn't own a vector table - each lab declares its own
+//! and points it at whatever handlers it wants. `vectorTable(.{ ... })`
+//! is a comptime helper that fills in the standard slots (initial SP,
+//! reset entry) and lets the lab override any IRQ slot in one line:
+//!
+//!     pub export const vector_table linksection(".isr_vector") =
+//!         board.startup.vectorTable(.{
+//!             .SysTick = &mySysTickHandler,
+//!             .USART2 = &board.Hardware.usart2RxHandler,
+//!         });
+//!
+//! Slots the lab doesn't name fall through to the chip's
+//! `defaultHandler` (an infinite-loop trap from
+//! `chip/STM32G071.zig`). This applies to NMI, HardFault, SVCall,
+//! PendSV, and every peripheral IRQ.
 const app = @import("root");
 const chip = @import("chip/STM32G071.zig");
-const hardware = @import("hardware.zig");
 
 // TODO: volatile isn't the correct way to handle this
 export fn __atomic_load_4(src: *const u32, _: i32) u32 {
@@ -13,16 +29,6 @@ extern var _edata: anyopaque;
 extern var _sbss: anyopaque;
 extern var _ebss: anyopaque;
 extern var _estack: anyopaque;
-
-var systick_callback: ?*const fn () void = null;
-
-pub fn setSysTickCallback(cb: *const fn () void) void {
-    systick_callback = cb;
-}
-
-fn sysTickHandler() callconv(chip.cc) void {
-    if (systick_callback) |cb| cb();
-}
 
 export fn _start() noreturn {
     const data_start: [*]u8 = @ptrCast(&_sdata);
@@ -40,13 +46,14 @@ export fn _start() noreturn {
     main_fn();
 }
 
-fn defaultHandler() callconv(chip.cc) void {
-    while (true) {}
+/// Builds an `.isr_vector` table, filling in `initial_stack_pointer`
+/// and `Reset` from the BSP's startup symbols. Pass a `chip.VectorTable`
+/// literal naming only the IRQ slots you want to handle; every other
+/// slot keeps the chip default (`unhandled`, an infinite-loop trap).
+/// Typed parameter means LSP autocompletes the available fields.
+pub fn vectorTable(table: chip.VectorTable) chip.VectorTable {
+    var t = table;
+    t.initial_stack_pointer = @ptrCast(&_estack);
+    t.Reset = @ptrCast(&_start);
+    return t;
 }
-
-pub export const vector_table: chip.VectorTable linksection(".isr_vector") = .{
-    .initial_stack_pointer = @ptrCast(&_estack),
-    .Reset = @ptrCast(&_start),
-    .SysTick = &sysTickHandler,
-    .USART2 = &hardware.usart2RxHandler,
-};

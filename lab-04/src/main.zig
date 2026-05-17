@@ -2,25 +2,27 @@ const board = @import("board");
 const Application = @import("application").Application;
 const erd_core = @import("erd_core");
 
-// Force the startup module to be analyzed so its exported symbols (_start,
-// vector_table, __atomic_load_4) end up in the final binary.
-comptime {
-    _ = board.startup;
-}
+const SYSCLK: board.clock.Config = .hsi16;
 
 var timer_module: erd_core.timer.TimerModule = .{};
 var application: Application = .{};
 
-fn sysTickTick() void {
+fn sysTick() callconv(.c) void {
     timer_module.incrementCurrentTime(1);
 }
 
-fn onUartRx(c: u8) void {
-    application.processChar(c);
+fn usart2Isr() callconv(.c) void {
+    if (board.Hardware.serial.serviceRx()) |c| application.processChar(c);
 }
 
+pub export const vector_table linksection(".isr_vector") =
+    board.startup.vectorTable(.{
+        .SysTick = &sysTick,
+        .USART2 = &usart2Isr,
+    });
+
 pub fn main() noreturn {
-    board.Hardware.init(.{ .systick_tick = &sysTickTick, .uart_rx = &onUartRx });
+    board.Hardware.init(SYSCLK);
     application.init(&timer_module);
     while (true) {
         var had_work = false;
