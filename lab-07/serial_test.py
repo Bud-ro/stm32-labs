@@ -89,7 +89,7 @@ def main():
 
     section("Reset to known state")
     expect("CLEAR works", send(ser, "CLEAR\r"), "Clearing FRAM... done")
-    expect("TEMP after CLEAR reports no data", send(ser, "TEMP\r"), "uninitialised")
+    expect("TEMP after CLEAR reports no data", send(ser, "TEMP\r"), "uninitialized")
 
     section("Sampling Lifecycle")
     expect("STOP before START is graceful", send(ser, "STOP\r"), "not sampling")
@@ -151,9 +151,47 @@ def main():
             f"first=0x{first:04X}",
         )
 
+    section("Long burst: TEMP must dump all entries with no drops")
+    # Earlier the ring-buffered TX path silently dropped bytes when
+    # `handleTemp` ran from the USART2 ISR and produced more output
+    # than the 256-byte ring could hold (around 6-7 entries). Collect
+    # ~30 samples to exceed that threshold by 4x, then verify TEMP
+    # reports them all and the indices are contiguous.
+    send(ser, "CLEAR\r", timeout=3.0)
+    send(ser, "START\r")
+    burst_target = 30
+    deadline = time.monotonic() + burst_target + 5.0
+    burst_buf = b""
+    while time.monotonic() < deadline and len(TEMP_RE.findall(burst_buf)) < burst_target:
+        burst_buf += ser.read(ser.in_waiting or 1)
+    live_count = len(TEMP_RE.findall(burst_buf))
+    check(
+        f"collected >= {burst_target} live samples",
+        live_count >= burst_target,
+        f"got {live_count}",
+    )
+    send(ser, "STOP\r")
+    resp = send(ser, "TEMP\r", timeout=5.0)
+    session = SESSION_RE.search(resp.encode())
+    check("burst TEMP reports a session", session is not None)
+    if session:
+        count = int(session.group(3))
+        entries = re.findall(rb"\[(\d+)\] @0x[0-9A-F]+: Temperature:", resp.encode())
+        check(
+            f"burst TEMP body lists all {count} entries (no ring overflow)",
+            len(entries) == count,
+            f"listed {len(entries)} of {count}",
+        )
+        indices = [int(b) for b in entries]
+        check(
+            "burst entry indices are contiguous 0..count-1",
+            indices == list(range(count)),
+            f"first 5: {indices[:5]}, last 5: {indices[-5:]}",
+        )
+
     section("CLEAR wipes the device")
     send(ser, "CLEAR\r", timeout=3.0)
-    expect("TEMP after CLEAR is empty again", send(ser, "TEMP\r"), "uninitialised")
+    expect("TEMP after CLEAR is empty again", send(ser, "TEMP\r"), "uninitialized")
 
     ser.close()
     elapsed = time.monotonic() - t0

@@ -22,6 +22,14 @@ const SAMPLE_PERIOD_MS: u32 = 1000;
 const DATA_START_ADDR: u16 = 0x0004;
 const ENTRY_BYTES: u16 = 2;
 
+/// Period (ms) at which the TEMP dump emits one stored entry. The TX
+/// ring is 256 B and bytes leave the USART at 115_200 baud (1 byte
+/// ~= 87 us, so 256 B drain in ~22 ms). One entry print is ~40 B, so
+/// at 5 ms per fire the ring drains ~57 B between pushes - comfortably
+/// above the per-entry push, leaving headroom for the 1 Hz blink and
+/// any concurrent prints.
+const DUMP_PERIOD_MS: u32 = 5;
+
 var cmd_storage: [CMD_BUF_SIZE]u8 = .{0} ** CMD_BUF_SIZE;
 
 pub const Application = struct {
@@ -31,6 +39,7 @@ pub const Application = struct {
     blink_timer: timer.Timer = .{},
     sample_timer: timer.Timer = .{},
     conversion_timer: timer.Timer = .{},
+    dump_timer: timer.Timer = .{},
     cmd: CommandBuffer = .{ .buf = &cmd_storage },
     /// In-FRAM address words for the current session. Kept mirrored in
     /// RAM so the per-sample fast path only does a single FRAM write
@@ -39,6 +48,12 @@ pub const Application = struct {
     /// pointing at the most recent entry).
     first_addr: u16 = 0,
     last_addr: u16 = 0,
+    /// TEMP-dump cursor: the next FRAM address whose entry should be
+    /// printed, plus the running display index. Active iff the
+    /// dump_timer is running.
+    dump_addr: u16 = 0,
+    dump_index: u16 = 0,
+    dump_end_addr: u16 = 0,
 
     /// Start the LED blink heartbeat. Banner print and peripheral init
     /// happen in main() before this is called.
@@ -80,7 +95,9 @@ pub const Application = struct {
         }
 
         self.cmd.resetInput();
-        serial.puts("> ");
+        // An async TEMP dump prints its own prompt when the last entry
+        // ticks out; suppress ours so the prompt lands after the dump.
+        if (!self.timer_module.isActive(&self.dump_timer)) serial.puts("> ");
     }
 
     fn handleBackspace(self: *Application) void {
@@ -128,6 +145,10 @@ pub const Application = struct {
     }
 
     fn handleTemp(self: *Application) void {
+        if (self.timer_module.isActive(&self.dump_timer)) {
+            serial.puts("(dump already in progress)\r\n");
+            return;
+        }
         const state = self.readBookkeeping();
         if (state.isUninitialized()) {
             serial.puts("No data logged - FRAM is uninitialized. Run START first.\r\n");
@@ -139,6 +160,7 @@ pub const Application = struct {
         }
         const count: u16 = (state.last_addr - state.first_addr) / ENTRY_BYTES + 1;
 
+        // Header fits well inside the 256 B TX ring; emit it inline.
         serial.puts("Session: first=");
         printHex16(state.first_addr);
         serial.puts(" last=");
@@ -147,23 +169,38 @@ pub const Application = struct {
         printUint(count);
         serial.puts("\r\n");
 
-        var addr = state.first_addr;
-        var index: u16 = 0;
-        while (addr <= state.last_addr) : (addr += ENTRY_BYTES) {
-            var entry: [2]u8 = undefined;
-            self.fram.read(addr, &entry);
-            const raw: u16 = (@as(u16, entry[0]) << 8) | entry[1];
-            const signed: i16 = @bitCast(raw);
-            const fixed_12: i16 = signed >> 4;
+        // Hand the per-entry loop off to the timer module so the TX
+        // ring can drain between prints. handleTemp itself runs from
+        // the USART2 ISR - bursting all entries here would overflow
+        // the ring after about 6 entries because the main super-loop
+        // can't run runUarts while the ISR holds the CPU.
+        self.dump_addr = state.first_addr;
+        self.dump_end_addr = state.last_addr;
+        self.dump_index = 0;
+        self.timer_module.startPeriodic(&self.dump_timer, DUMP_PERIOD_MS, self, &onDumpTick);
+    }
 
-            serial.putc('[');
-            printUint(index);
-            serial.puts("] @");
-            printHex16(addr);
-            serial.puts(": ");
-            printTemperature(fixed_12);
-            index += 1;
+    fn onDumpTick(ctx: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {
+        const self: *Application = @ptrCast(@alignCast(ctx));
+        var entry: [2]u8 = undefined;
+        self.fram.read(self.dump_addr, &entry);
+        const raw: u16 = (@as(u16, entry[0]) << 8) | entry[1];
+        const fixed_12: i16 = @as(i16, @bitCast(raw)) >> 4;
+
+        serial.putc('[');
+        printUint(self.dump_index);
+        serial.puts("] @");
+        printHex16(self.dump_addr);
+        serial.puts(": ");
+        printTemperature(fixed_12);
+
+        if (self.dump_addr >= self.dump_end_addr) {
+            self.timer_module.stop(&self.dump_timer);
+            serial.puts("> ");
+            return;
         }
+        self.dump_addr += ENTRY_BYTES;
+        self.dump_index += 1;
     }
 
     fn handleClear(self: *Application) void {
