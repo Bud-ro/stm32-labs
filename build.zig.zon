@@ -10,6 +10,7 @@
         .@"lab-06" = .{ .path = "lab-06" },
         .@"lab-07" = .{ .path = "lab-07" },
         .@"lab-08" = .{ .path = "lab-08" },
+        .@"lab-09" = .{ .path = "lab-09" },
         .zig_pub_sub = .{
             .url = "git+https://github.com/Bud-ro/zig-pub-sub#9f1cd8406c6bea613fc632b80b73b8ff153ce766",
             .hash = "zig_pub_sub-0.0.0-OLnGOubdDABQhk-ZKdm4ScHLXA6YJ_L4G1pHU4rVAN4U",

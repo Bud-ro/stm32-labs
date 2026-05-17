@@ -1,0 +1,14 @@
+.{
+    .name = .lab_09,
+    .version = "0.0.0",
+    .fingerprint = 0x1c2ad88132faf284,
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .@"nucleo-g071rb" = .{ .path = "../nucleo-g071rb" },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

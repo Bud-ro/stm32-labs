@@ -21,6 +21,10 @@ pub fn Mmio(comptime PackedT: type) type {
             addr.raw = val;
         }
 
+        pub fn read_raw(addr: *volatile @This()) IntT {
+            return addr.raw;
+        }
+
         pub fn modify_one(addr: *volatile @This(), comptime field_name: []const u8, value: @FieldType(underlying_type, field_name)) void {
             var val = addr.read();
             @field(val, field_name) = value;
