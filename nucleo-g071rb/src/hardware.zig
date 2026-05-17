@@ -37,10 +37,12 @@ const clock = @import("clock.zig");
 const gpio = @import("gpio.zig");
 const uart = @import("uart.zig");
 const i2c = @import("i2c.zig");
+const spi = @import("spi.zig");
 const RingBuffer = @import("common").RingBuffer;
 
 const usart2 = chip.peripherals.USART2;
 const i2c1 = chip.peripherals.I2C1;
+const spi1 = chip.peripherals.SPI1;
 
 var tx_storage: [256]u8 = undefined;
 var tx_ring: RingBuffer = .{ .buf = &tx_storage };
@@ -65,15 +67,30 @@ pub const Hardware = struct {
     /// PB9 = SDA/D14). Call `enableI2c1` before use.
     pub const i2c1_bus: i2c.I2c = .{ .periph = i2c1 };
 
+    /// SPI1 master on the class-shield wiring (SCK=PB3, MISO=PA6,
+    /// MOSI=PA7). CS is left to the slave driver. Call `enableSpi1`
+    /// before use.
+    pub const spi1_bus: spi.Spi = .{ .periph = spi1 };
+
     const usart2_tx = gpio.Pin(.A, 2);
     const usart2_rx = gpio.Pin(.A, 3);
     const i2c1_scl = gpio.Pin(.B, 8);
     const i2c1_sda = gpio.Pin(.B, 9);
+    const spi1_sck = gpio.Pin(.B, 3);
+    const spi1_miso = gpio.Pin(.A, 6);
+    const spi1_mosi = gpio.Pin(.A, 7);
 
     /// Lab-facing I2C1 settings. Kernel clock is derived from the
     /// `clock` passed to `enableI2c1`; callers only pick the bus mode.
     pub const I2c1Config = struct {
         mode: i2c.Mode = .standard_100k,
+    };
+
+    /// Lab-facing SPI1 settings. Kernel clock comes from the `clock`
+    /// passed to `enableSpi1`.
+    pub const Spi1Config = struct {
+        bus_rate_hz: u32 = 4_000_000,
+        mode: spi.Mode = .{},
     };
 
     /// Apply `clock`, configure the LED + USART2 (TX always, RX if the
@@ -113,6 +130,24 @@ pub const Hardware = struct {
         i2c1_sda.configure(.{ .mode = .alternate, .af = 6, .output_type = .open_drain, .pull = .up });
         i2c1_bus.init(.{
             .kernel_clock_hz = board_clock.hclkHz(),
+            .mode = cfg.mode,
+        });
+    }
+
+    /// Configure SPI1 in master mode. SCK lives on PB3 to keep PA5
+    /// free for the on-board LED; MISO/MOSI use the Arduino-standard
+    /// PA6/PA7. CS is owned by the slave driver. `board_clock` must
+    /// match the one passed to `init`; it drives the BR prescaler
+    /// solver.
+    pub fn enableSpi1(comptime board_clock: clock.Config, comptime cfg: Spi1Config) void {
+        chip.peripherals.RCC.IOPENR.modify(.{ .IOPBEN = 1 });
+        chip.peripherals.RCC.APBENR2.modify(.{ .SPI1EN = 1 });
+        spi1_sck.configure(.{ .mode = .alternate, .af = 0 });
+        spi1_miso.configure(.{ .mode = .alternate, .af = 0 });
+        spi1_mosi.configure(.{ .mode = .alternate, .af = 0 });
+        spi1_bus.init(.{
+            .kernel_clock_hz = board_clock.hclkHz(),
+            .bus_rate_hz = cfg.bus_rate_hz,
             .mode = cfg.mode,
         });
     }

@@ -49,7 +49,7 @@ pub const Tmp102 = struct {
     /// Bind the driver to `bus` and put the device into shutdown mode
     /// so subsequent `triggerOneShot` calls each produce exactly one
     /// conversion. Returns `Error.TransferFailed` if the device doesn't
-    /// ACK — typically missing or miswired hardware.
+    /// ACK - typically missing or miswired hardware.
     pub fn init(bus: i2c.I2c) Error!Tmp102 {
         const self: Tmp102 = .{ .bus = bus };
         const bytes = [_]u8{ REG_CONFIG, IDLE_BYTES[0], IDLE_BYTES[1] };
@@ -72,12 +72,17 @@ pub const Tmp102 = struct {
     /// right by 4 with signed semantics drops the unused LSBs and
     /// preserves the sign.
     pub fn readTemperatureRaw(self: Tmp102) Error!i16 {
+        const raw = try self.readRawRegister();
+        return @as(i16, @bitCast(raw)) >> 4;
+    }
+
+    /// Read the unshifted big-endian temperature register as a `u16`.
+    /// Useful when callers want to store the wire bytes verbatim
+    /// (e.g., into off-chip memory) before any sign-extension.
+    pub fn readRawRegister(self: Tmp102) Error!u16 {
         var rx: [2]u8 = undefined;
         const reg = [_]u8{REG_TEMP};
         self.bus.writeRead(SLAVE_ADDR, &reg, &rx) catch return Error.TransferFailed;
-
-        const raw_16: u16 = (@as(u16, rx[0]) << 8) | rx[1];
-        const signed_16: i16 = @bitCast(raw_16);
-        return signed_16 >> 4;
+        return (@as(u16, rx[0]) << 8) | rx[1];
     }
 };

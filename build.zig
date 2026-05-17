@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const labs = [_][]const u8{ "lab-03", "lab-04", "lab-05", "lab-06" };
+const labs = [_][]const u8{ "lab-03", "lab-04", "lab-05", "lab-06", "lab-07" };
 
 pub fn build(b: *std.Build) void {
     const explicit_optimize = b.option(std.builtin.OptimizeMode, "optimize", "Optimization mode (default: ReleaseSmall)");
@@ -57,7 +57,7 @@ pub fn build(b: *std.Build) void {
     }
 
     const install = selected_install orelse {
-        std.debug.print("error: unknown -Dlab={s}; expected one of: lab-03, lab-04, lab-05, lab-06\n", .{selected_lab});
+        std.debug.print("error: unknown -Dlab={s}; expected one of: lab-03, lab-04, lab-05, lab-06, lab-07\n", .{selected_lab});
         std.process.exit(1);
     };
     const install_bin = selected_install_bin.?;
