@@ -11,11 +11,11 @@ const CMD_BUF_SIZE = 20;
 var cmd_storage: [CMD_BUF_SIZE]u8 = .{0} ** CMD_BUF_SIZE;
 
 pub const Application = struct {
-    blink_timer: timer.Timer = .{},
+    heartbeat_timer: timer.Timer = .{},
     cmd: CommandBuffer = .{ .buf = &cmd_storage },
 
     pub fn init(self: *Application, timer_module: *timer.TimerModule) void {
-        timer_module.startPeriodic(&self.blink_timer, 1000, null, &onBlinkTimer);
+        timer_module.startPeriodic(&self.heartbeat_timer, 1000, null, &onHeartbeat);
         serial.puts("Lab 04: UART Ring Buffer + Command Parser\r\n");
         serial.puts("Commands: STOP, START, CLEAR\r\n> ");
     }
@@ -94,8 +94,7 @@ pub const Application = struct {
         }
     }
 
-    fn onBlinkTimer(_: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {
-        board.Hardware.led.toggle();
+    fn onHeartbeat(_: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {
         serial.puts("Lab 04 running\r\n");
     }
 };

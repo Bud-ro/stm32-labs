@@ -1,4 +1,5 @@
 const board = @import("board");
+const common = @import("common");
 const app_mod = @import("application");
 const Application = app_mod.Application;
 const erd_core = @import("erd_core");
@@ -7,6 +8,7 @@ const SYSCLK: board.clock.Config = .pll_32mhz;
 
 var timer_module: erd_core.timer.TimerModule = .{};
 var application: Application = .{ .timer_module = &timer_module };
+var blinky: common.Blinky = .{};
 
 fn sysTick() callconv(.c) void {
     timer_module.incrementCurrentTime(1);
@@ -43,6 +45,7 @@ pub fn main() noreturn {
     serial.puts("Commands: DUTY<n> (0..100), HALT\r\n> ");
 
     application.start();
+    blinky.init(&timer_module, board.Hardware.led);
 
     while (true) {
         var had_work = false;

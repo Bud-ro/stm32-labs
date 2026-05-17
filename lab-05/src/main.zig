@@ -1,4 +1,5 @@
 const board = @import("board");
+const common = @import("common");
 const Application = @import("application").Application;
 const erd_core = @import("erd_core");
 
@@ -6,6 +7,7 @@ const SYSCLK: board.clock.Config = .pll_32mhz;
 
 var timer_module: erd_core.timer.TimerModule = .{};
 var application: Application = .{};
+var blinky: common.Blinky = .{};
 
 fn sysTick() callconv(.c) void {
     timer_module.incrementCurrentTime(1);
@@ -19,6 +21,7 @@ pub export const vector_table linksection(".isr_vector") =
 pub fn main() noreturn {
     board.Hardware.init(SYSCLK);
     application.init(&timer_module);
+    blinky.init(&timer_module, board.Hardware.led);
     while (true) {
         var had_work = false;
         if (board.Hardware.runUarts()) had_work = true;

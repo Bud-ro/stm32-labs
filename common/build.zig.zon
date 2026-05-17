@@ -3,6 +3,12 @@
     .version = "0.0.0",
     .fingerprint = 0xe5ec7051785ae1f8,
     .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .zig_pub_sub = .{
+            .url = "git+https://github.com/Bud-ro/zig-pub-sub#9f1cd8406c6bea613fc632b80b73b8ff153ce766",
+            .hash = "zig_pub_sub-0.0.0-OLnGOubdDABQhk-ZKdm4ScHLXA6YJ_L4G1pHU4rVAN4U",
+        },
+    },
     .paths = .{
         "build.zig",
         "build.zig.zon",

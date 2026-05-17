@@ -36,7 +36,6 @@ pub const Application = struct {
     timer_module: *timer.TimerModule,
     sensor: Tmp102,
     fram: Fram,
-    blink_timer: timer.Timer = .{},
     sample_timer: timer.Timer = .{},
     conversion_timer: timer.Timer = .{},
     dump_timer: timer.Timer = .{},
@@ -54,12 +53,6 @@ pub const Application = struct {
     dump_addr: u16 = 0,
     dump_index: u16 = 0,
     dump_end_addr: u16 = 0,
-
-    /// Start the LED blink heartbeat. Banner print and peripheral init
-    /// happen in main() before this is called.
-    pub fn start(self: *Application) void {
-        self.timer_module.startPeriodic(&self.blink_timer, 1000, null, &onBlinkTimer);
-    }
 
     pub fn processChar(self: *Application, c: u8) void {
         switch (c) {
@@ -219,10 +212,6 @@ pub const Application = struct {
     fn onSampleTimer(ctx: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {
         const self: *Application = @ptrCast(@alignCast(ctx));
         triggerOneShot(self);
-    }
-
-    fn onBlinkTimer(_: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {
-        board.Hardware.led.toggle();
     }
 
     fn triggerOneShot(self: *Application) void {

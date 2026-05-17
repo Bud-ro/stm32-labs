@@ -5,6 +5,7 @@
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .@"nucleo-g071rb" = .{ .path = "../nucleo-g071rb" },
+        .common = .{ .path = "../common" },
         .zig_pub_sub = .{
             .url = "git+https://github.com/Bud-ro/zig-pub-sub#9f1cd8406c6bea613fc632b80b73b8ff153ce766",
             .hash = "zig_pub_sub-0.0.0-OLnGOubdDABQhk-ZKdm4ScHLXA6YJ_L4G1pHU4rVAN4U",

@@ -20,17 +20,9 @@ var cmd_storage: [CMD_BUF_SIZE]u8 = .{0} ** CMD_BUF_SIZE;
 pub const Application = struct {
     timer_module: *timer.TimerModule,
     sensor: Tmp102,
-    blink_timer: timer.Timer = .{},
     sample_timer: timer.Timer = .{},
     conversion_timer: timer.Timer = .{},
     cmd: CommandBuffer = .{ .buf = &cmd_storage },
-
-    /// Start the LED blink heartbeat. Banner print and TMP102 init are
-    /// done in main() before this is called - Application here just
-    /// wires the periodic timer the super-loop will service.
-    pub fn start(self: *Application) void {
-        self.timer_module.startPeriodic(&self.blink_timer, 1000, null, &onBlinkTimer);
-    }
 
     pub fn processChar(self: *Application, c: u8) void {
         switch (c) {
@@ -115,10 +107,6 @@ pub const Application = struct {
             return;
         };
         printTemperature(raw);
-    }
-
-    fn onBlinkTimer(_: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {
-        board.Hardware.led.toggle();
     }
 };
 

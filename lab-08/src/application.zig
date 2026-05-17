@@ -29,12 +29,10 @@ var encoder_pulses: u32 = 0;
 pub const Application = struct {
     timer_module: *timer.TimerModule,
     rpm_timer: timer.Timer = .{},
-    blink_timer: timer.Timer = .{},
     cmd: CommandBuffer = .{ .buf = &cmd_storage },
 
     pub fn start(self: *Application) void {
         self.timer_module.startPeriodic(&self.rpm_timer, RPM_PERIOD_MS, self, &onRpmTick);
-        self.timer_module.startPeriodic(&self.blink_timer, 1000, null, &onBlinkTimer);
     }
 
     pub fn processChar(self: *Application, c: u8) void {
@@ -90,10 +88,6 @@ pub const Application = struct {
     fn handleHalt() void {
         board.Hardware.motor_pwm.setDuty(0);
         serial.puts("HALT - motor stopped\r\n");
-    }
-
-    fn onBlinkTimer(_: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {
-        board.Hardware.led.toggle();
     }
 
     fn onRpmTick(_: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {

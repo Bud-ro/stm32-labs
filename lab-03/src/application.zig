@@ -10,7 +10,6 @@ pub const Application = struct {
     }
 
     fn onPrintTimer(_: ?*anyopaque, _: *timer.TimerModule, _: *timer.Timer) void {
-        board.Hardware.led.toggle();
         board.Hardware.serial.puts("Not putting my name here in the Zig version :D\r\n");
     }
 };

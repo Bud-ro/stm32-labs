@@ -39,6 +39,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     exe.root_module.addImport("board", board_mod);
+    exe.root_module.addImport("common", common_mod);
     exe.root_module.addImport("erd_core", erd_core_mod);
     exe.root_module.addImport("application", app_mod);
     exe.setLinkerScript(bsp_dep.path("stm32g071rb.ld"));
